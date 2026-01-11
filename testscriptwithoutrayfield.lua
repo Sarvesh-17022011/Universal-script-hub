@@ -1,4 +1,4 @@
--- [[ UNIVERSAL HUB - EXECUTOR VERSION (FIXED MINIMIZE) ]]
+-- [[ UNIVERSAL HUB - EXECUTOR VERSION ]]
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -14,7 +14,7 @@ if ParentUI:FindFirstChild("SarveshHub_Ultimate") then
     ParentUI:FindFirstChild("SarveshHub_Ultimate"):Destroy() 
 end
 
--- 2. State
+-- 2. State & Variables
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local FlyEnabled, FlySpeed, WalkSpeedValue = false, 50, 16
@@ -34,28 +34,22 @@ local ScreenGui = Instance.new("ScreenGui", ParentUI)
 ScreenGui.Name = "SarveshHub_Ultimate"
 ScreenGui.ResetOnSpawn = false
 
--- Main Menu Frame
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 500, 0, 400)
-Main.Position = UDim2.new(0.5, 0, 0.5, 0)
-Main.AnchorPoint = Vector2.new(0.5, 0.5)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.BorderSizePixel = 0
-Main.Active = true
-Main.Visible = true
-Instance.new("UICorner", Main)
-
--- Fixed Draggable Logic for Main Frame
-local function MakeDraggable(frame)
+-- 4. Custom Dragging Function (Works on Mobile + PC)
+local function MakeDraggable(TopBar, Frame)
     local dragging, dragInput, dragStart, startPos
-    frame.InputBegan:Connect(function(input)
+    TopBar.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
-            startPos = frame.Position
+            startPos = Frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
-    frame.InputChanged:Connect(function(input)
+    TopBar.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
             dragInput = input
         end
@@ -63,56 +57,63 @@ local function MakeDraggable(frame)
     UIS.InputChanged:Connect(function(input)
         if input == dragInput and dragging then
             local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
+            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 end
-MakeDraggable(Main)
 
--- Floating Toggle Button (Minimized View)
+-- 5. Main Menu Frame
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 500, 0, 400)
+Main.Position = UDim2.new(0.5, -250, 0.5, -200)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.BorderSizePixel = 0
+Main.Active = true
+Instance.new("UICorner", Main)
+MakeDraggable(Main, Main)
+
+-- 6. Floating Minimize Button (The "Shrunk" Button)
 local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Size = UDim2.new(0, 55, 0, 55)
-OpenBtn.Position = UDim2.new(0, 20, 0.4, 0)
+OpenBtn.Name = "OpenButton"
+OpenBtn.Size = UDim2.new(0, 60, 0, 60)
+OpenBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
 OpenBtn.Visible = false
 OpenBtn.Text = "HUB"
 OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.TextColor3 = UITheme
 OpenBtn.Font = Enum.Font.GothamBold
+OpenBtn.TextSize = 14
 Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
 local OpenStroke = Instance.new("UIStroke", OpenBtn)
 OpenStroke.Color = UITheme
 OpenStroke.Thickness = 2
-MakeDraggable(OpenBtn)
+MakeDraggable(OpenBtn, OpenBtn)
 
--- 4. Minimize Functionality
-local function ToggleUI()
-    if Main.Visible then
-        Main.Visible = false
-        OpenBtn.Visible = true
-    else
-        Main.Visible = true
-        OpenBtn.Visible = false
-    end
+-- 7. Minimize Logic
+local function MinimizeUI()
+    Main.Visible = false
+    OpenBtn.Visible = true
 end
 
-OpenBtn.MouseButton1Click:Connect(ToggleUI)
+local function MaximizeUI()
+    Main.Visible = true
+    OpenBtn.Visible = false
+end
 
--- Minimize Button (The '-' or 'X' in your main menu)
-local Minimize = Instance.new("TextButton", Main)
-Minimize.Size = UDim2.new(0, 30, 0, 30)
-Minimize.Position = UDim2.new(1, -35, 0, 5)
-Minimize.Text = "-"
-Minimize.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", Minimize)
-Minimize.MouseButton1Click:Connect(ToggleUI)
+OpenBtn.MouseButton1Click:Connect(MaximizeUI)
 
--- 5. Tabs and Containers
+-- Minimize Button inside Main
+local CloseBtn = Instance.new("TextButton", Main)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.Text = "-"
+CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", CloseBtn)
+CloseBtn.MouseButton1Click:Connect(MinimizeUI)
+
+-- 8. Tabs System
 local Sidebar = Instance.new("Frame", Main)
 Sidebar.Size = UDim2.new(0, 120, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
@@ -147,7 +148,7 @@ local function CreateTab(name, pos)
     return Page
 end
 
--- Feature Adders (Toggle/Slider)
+-- Helper Components
 local function AddToggle(parent, text, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = UDim2.new(1, 0, 0, 35)
@@ -188,16 +189,16 @@ local function AddSlider(parent, text, min, max, default, callback)
     UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then Update(i) end end)
 end
 
--- 6. Initialize Tabs
+-- 9. Setup Features
 local HomeTab = CreateTab("Home", 1)
 local MainTab = CreateTab("Main", 2)
 local PlayerTab = CreateTab("Player", 3)
 local CombatTab = CreateTab("Combat", 4)
 local TeleportTab = CreateTab("Teleport", 5)
 
--- Home: Info Display
+-- Home: Stats
 local StatBox = Instance.new("TextLabel", HomeTab)
-StatBox.Size = UDim2.new(1, 0, 0, 100); StatBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30); StatBox.TextColor3 = Color3.fromRGB(255,255,255); StatBox.Text = "Select player"; Instance.new("UICorner", StatBox)
+StatBox.Size = UDim2.new(1, 0, 0, 100); StatBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30); StatBox.TextColor3 = Color3.fromRGB(255,255,255); StatBox.Text = "Select player to see stats"; Instance.new("UICorner", StatBox)
 
 local function RefreshHome()
     for _, v in pairs(HomeTab:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
@@ -206,14 +207,14 @@ local function RefreshHome()
         b.MouseButton1Click:Connect(function()
             local str = "Name: "..p.Name.."\n"
             local ls = p:FindFirstChild("leaderstats")
-            if ls then for _, v in pairs(ls:GetChildren()) do str = str..v.Name..": "..tostring(v.Value).." " end end
+            if ls then for _, v in pairs(ls:GetChildren()) do str = str..v.Name..": "..tostring(v.Value).." | " end end
             StatBox.Text = str
         end)
     end
 end
 task.spawn(function() while task.wait(5) do RefreshHome() end end)
 
--- Main: God Mode, Brightness, Themes
+-- Main: God/Bright
 AddToggle(MainTab, "God Mode", function(v)
     GodMode = v
     task.spawn(function()
@@ -226,7 +227,7 @@ AddToggle(MainTab, "God Mode", function(v)
 end)
 AddToggle(MainTab, "Fullbright", function(v) Lighting.Brightness = v and 2 or 1; Lighting.GlobalShadows = not v; Lighting.ClockTime = v and 14 or 12 end)
 
--- Player: Fly, Speed, Vanish
+-- Player: Fly/Speed/Vanish
 AddToggle(PlayerTab, "Fly", function(v) 
     FlyEnabled = v 
     if v then
@@ -236,14 +237,9 @@ AddToggle(PlayerTab, "Fly", function(v)
             while FlyEnabled do
                 local cam = workspace.CurrentCamera.CFrame
                 local move = Humanoid.MoveDirection
-                local vel = Vector3.new(0,0,0)
-                if move.Magnitude > 0 then
-                    local look = cam.LookVector
-                    local right = cam.RightVector
-                    vel = (look * (look.X * move.X + look.Z * move.Z)) + (right * (right.X * move.X + right.Z * move.Z))
-                end
-                bv.Velocity = vel.Unit * FlySpeed
-                if vel.Magnitude == 0 then bv.Velocity = Vector3.new(0,0,0) end
+                local vel = (cam.LookVector * (move.Z * -1)) + (cam.RightVector * move.X)
+                bv.Velocity = vel * FlySpeed
+                if move.Magnitude == 0 then bv.Velocity = Vector3.new(0,0,0) end
                 task.wait()
             end
             bv:Destroy()
@@ -259,7 +255,7 @@ AddToggle(PlayerTab, "Vanish", function(v)
     for _, p in pairs(Character:GetDescendants()) do if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end end
 end)
 
--- Combat: Kill Aura & ESP
+-- Combat: Aura/ESP
 AddToggle(CombatTab, "Kill Aura", function(v) KillAura = v end)
 AddSlider(CombatTab, "Range", 5, 50, 20, function(v) KillAuraRange = v end)
 AddToggle(CombatTab, "Target ESP", function(v) ESPEnabled = v end)
@@ -274,7 +270,7 @@ local function RefreshCombat()
 end
 task.spawn(function() while task.wait(5) do RefreshCombat() end end)
 
--- Teleport: Server Hop & TP
+-- Teleport: Hop/TP
 local Hop = Instance.new("TextButton", TeleportTab); Hop.Size = UDim2.new(1,0,0,35); Hop.Text = "Server Hop"; Hop.BackgroundColor3 = Color3.fromRGB(60,60,60); Hop.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", Hop)
 Hop.MouseButton1Click:Connect(function()
     local x = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100"))
@@ -291,7 +287,7 @@ local function RefreshTP()
 end
 task.spawn(function() while task.wait(5) do RefreshTP() end end)
 
--- 7. Loops & Global Toggles
+-- 10. Core Loops
 RunService.Stepped:Connect(function()
     if NoclipEnabled and Character then for _, v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
     if Humanoid and not FlyEnabled then Humanoid.WalkSpeed = WalkSpeedValue end
@@ -320,9 +316,11 @@ end)
 
 UIS.JumpRequest:Connect(function() if InfJump then Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end end)
 
--- Keybind to open (PC)
+-- Keybind Toggle
 UIS.InputBegan:Connect(function(input, processed)
     if not processed and input.KeyCode == Enum.KeyCode.V then
-        ToggleUI()
+        if Main.Visible or OpenBtn.Visible then
+            if Main.Visible then MinimizeUI() else MaximizeUI() end
+        end
     end
 end)
