@@ -1,4 +1,4 @@
--- [[ UNIVERSAL TESTING HUB - EXECUTOR CORE GUI VERSION ]]
+-- [[ UNIVERSAL HUB - EXECUTOR VERSION (FIXED MINIMIZE) ]]
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -7,15 +7,14 @@ local Lighting = game:GetService("Lighting")
 local TeleportService = game:GetService("TeleportService")
 local CoreGui = game:GetService("CoreGui")
 
--- Use gethui() for better invisibility/compatibility, or fallback to CoreGui
 local ParentUI = gethui and gethui() or CoreGui
 
--- Cleanup previous execution
-if ParentUI:FindFirstChild("DevTestingHub_Exec") then 
-    ParentUI.DevTestingHub_Exec:Destroy() 
+-- 1. Cleanup
+if ParentUI:FindFirstChild("SarveshHub_Ultimate") then 
+    ParentUI:FindFirstChild("SarveshHub_Ultimate"):Destroy() 
 end
 
--- Global State
+-- 2. State
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local FlyEnabled, FlySpeed, WalkSpeedValue = false, 50, 16
@@ -23,60 +22,107 @@ local NoclipEnabled, InfJump = false, false
 local KillAura, KillAuraRange = false, 20
 local ESPEnabled, SelectedPlayer = false, nil
 local GodMode, Vanished = false, false
-local UITheme = Color3.fromRGB(0, 162, 255)
+local UITheme = Color3.fromRGB(0, 255, 150)
 
--- Handle Character Respawn
-Player.CharacterAdded:Connect(function(c) 
-    Character = c 
-    Humanoid = c:WaitForChild("Humanoid") 
+Player.CharacterAdded:Connect(function(Char)
+    Character = Char
+    Humanoid = Char:WaitForChild("Humanoid")
 end)
 
--- UI Setup
+-- 3. UI Root
 local ScreenGui = Instance.new("ScreenGui", ParentUI)
-ScreenGui.Name = "DevTestingHub_Exec"
+ScreenGui.Name = "SarveshHub_Ultimate"
 ScreenGui.ResetOnSpawn = false
 
+-- Main Menu Frame
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 520, 0, 420)
+Main.Size = UDim2.new(0, 500, 0, 400)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
 Main.AnchorPoint = Vector2.new(0.5, 0.5)
-Main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.BorderSizePixel = 0
 Main.Active = true
-Main.Draggable = true 
+Main.Visible = true
 Instance.new("UICorner", Main)
 
+-- Fixed Draggable Logic for Main Frame
+local function MakeDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+MakeDraggable(Main)
+
+-- Floating Toggle Button (Minimized View)
 local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Size = UDim2.new(0, 60, 0, 30)
-OpenBtn.Position = UDim2.new(0, 10, 0, 10)
+OpenBtn.Size = UDim2.new(0, 55, 0, 55)
+OpenBtn.Position = UDim2.new(0, 20, 0.4, 0)
 OpenBtn.Visible = false
 OpenBtn.Text = "HUB"
-OpenBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-OpenBtn.Draggable = true
-Instance.new("UICorner", OpenBtn)
-local Stroke = Instance.new("UIStroke", OpenBtn)
-Stroke.Color = UITheme
-Stroke.Thickness = 2
+OpenBtn.Font = Enum.Font.GothamBold
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+local OpenStroke = Instance.new("UIStroke", OpenBtn)
+OpenStroke.Color = UITheme
+OpenStroke.Thickness = 2
+MakeDraggable(OpenBtn)
 
-local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.Text = "X"
-CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", CloseBtn)
+-- 4. Minimize Functionality
+local function ToggleUI()
+    if Main.Visible then
+        Main.Visible = false
+        OpenBtn.Visible = true
+    else
+        Main.Visible = true
+        OpenBtn.Visible = false
+    end
+end
 
+OpenBtn.MouseButton1Click:Connect(ToggleUI)
+
+-- Minimize Button (The '-' or 'X' in your main menu)
+local Minimize = Instance.new("TextButton", Main)
+Minimize.Size = UDim2.new(0, 30, 0, 30)
+Minimize.Position = UDim2.new(1, -35, 0, 5)
+Minimize.Text = "-"
+Minimize.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Minimize.TextColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", Minimize)
+Minimize.MouseButton1Click:Connect(ToggleUI)
+
+-- 5. Tabs and Containers
 local Sidebar = Instance.new("Frame", Main)
-Sidebar.Size = UDim2.new(0, 130, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Sidebar.Size = UDim2.new(0, 120, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Instance.new("UICorner", Sidebar)
 
 local Container = Instance.new("Frame", Main)
-Container.Position = UDim2.new(0, 140, 0, 10)
-Container.Size = UDim2.new(1, -150, 1, -20)
+Container.Position = UDim2.new(0, 130, 0, 10)
+Container.Size = UDim2.new(1, -140, 1, -20)
 Container.BackgroundTransparency = 1
 
--- UI Helper Functions
 local function CreateTab(name, pos)
     local Page = Instance.new("ScrollingFrame", Container)
     Page.Size = UDim2.new(1, 0, 1, 0)
@@ -90,7 +136,7 @@ local function CreateTab(name, pos)
     TabBtn.Size = UDim2.new(1, -10, 0, 35)
     TabBtn.Position = UDim2.new(0, 5, 0, (pos-1)*40 + 10)
     TabBtn.Text = name
-    TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     Instance.new("UICorner", TabBtn)
     
@@ -101,18 +147,19 @@ local function CreateTab(name, pos)
     return Page
 end
 
+-- Feature Adders (Toggle/Slider)
 local function AddToggle(parent, text, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = UDim2.new(1, 0, 0, 35)
     btn.Text = text .. ": OFF"
-    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     Instance.new("UICorner", btn)
     local state = false
     btn.MouseButton1Click:Connect(function()
         state = not state
         btn.Text = text .. (state and ": ON" or ": OFF")
-        btn.BackgroundColor3 = state and UITheme or Color3.fromRGB(45, 45, 45)
+        btn.BackgroundColor3 = state and UITheme or Color3.fromRGB(40, 40, 40)
         callback(state)
     end)
 end
@@ -123,11 +170,10 @@ local function AddSlider(parent, text, min, max, default, callback)
     local Label = Instance.new("TextLabel", SFrame)
     Label.Size = UDim2.new(1, 0, 0, 20); Label.Text = text .. ": " .. default; Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.BackgroundTransparency = 1
     local Bar = Instance.new("Frame", SFrame)
-    Bar.Size = UDim2.new(1, -20, 0, 8); Bar.Position = UDim2.new(0, 10, 0, 30); Bar.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    Bar.Size = UDim2.new(1, -20, 0, 8); Bar.Position = UDim2.new(0, 10, 0, 30); Bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     local Fill = Instance.new("Frame", Bar)
     Fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0); Fill.BackgroundColor3 = UITheme
     
-    local dragging = false
     local function Update(input)
         local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
         local val = math.floor(min + (max - min) * pos)
@@ -135,37 +181,39 @@ local function AddSlider(parent, text, min, max, default, callback)
         Label.Text = text .. ": " .. val
         callback(val)
     end
+    
+    local dragging = false
     Bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; Update(i) end end)
     UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
     UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then Update(i) end end)
 end
 
--- Tabs
+-- 6. Initialize Tabs
 local HomeTab = CreateTab("Home", 1)
 local MainTab = CreateTab("Main", 2)
 local PlayerTab = CreateTab("Player", 3)
 local CombatTab = CreateTab("Combat", 4)
 local TeleportTab = CreateTab("Teleport", 5)
 
--- HOME: Stats
+-- Home: Info Display
 local StatBox = Instance.new("TextLabel", HomeTab)
-StatBox.Size = UDim2.new(1, 0, 0, 100); StatBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30); StatBox.TextColor3 = Color3.fromRGB(255,255,255); StatBox.Text = "Select a player"; StatBox.TextWrapped = true; Instance.new("UICorner", StatBox)
+StatBox.Size = UDim2.new(1, 0, 0, 100); StatBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30); StatBox.TextColor3 = Color3.fromRGB(255,255,255); StatBox.Text = "Select player"; Instance.new("UICorner", StatBox)
 
 local function RefreshHome()
     for _, v in pairs(HomeTab:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
         local b = Instance.new("TextButton", HomeTab); b.Size = UDim2.new(1,0,0,30); b.Text = p.DisplayName; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function()
-            local info = "Player: "..p.Name.."\n"
+            local str = "Name: "..p.Name.."\n"
             local ls = p:FindFirstChild("leaderstats")
-            if ls then for _, v in pairs(ls:GetChildren()) do info = info..v.Name..": "..tostring(v.Value).." | " end end
-            StatBox.Text = info
+            if ls then for _, v in pairs(ls:GetChildren()) do str = str..v.Name..": "..tostring(v.Value).." " end end
+            StatBox.Text = str
         end)
     end
 end
 task.spawn(function() while task.wait(5) do RefreshHome() end end)
 
--- MAIN: Utilities
+-- Main: God Mode, Brightness, Themes
 AddToggle(MainTab, "God Mode", function(v)
     GodMode = v
     task.spawn(function()
@@ -178,7 +226,7 @@ AddToggle(MainTab, "God Mode", function(v)
 end)
 AddToggle(MainTab, "Fullbright", function(v) Lighting.Brightness = v and 2 or 1; Lighting.GlobalShadows = not v; Lighting.ClockTime = v and 14 or 12 end)
 
--- PLAYER: Movement
+-- Player: Fly, Speed, Vanish
 AddToggle(PlayerTab, "Fly", function(v) 
     FlyEnabled = v 
     if v then
@@ -211,7 +259,7 @@ AddToggle(PlayerTab, "Vanish", function(v)
     for _, p in pairs(Character:GetDescendants()) do if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end end
 end)
 
--- COMBAT: ESP & Aura
+-- Combat: Kill Aura & ESP
 AddToggle(CombatTab, "Kill Aura", function(v) KillAura = v end)
 AddSlider(CombatTab, "Range", 5, 50, 20, function(v) KillAuraRange = v end)
 AddToggle(CombatTab, "Target ESP", function(v) ESPEnabled = v end)
@@ -220,43 +268,30 @@ local CombatList = Instance.new("Frame", CombatTab); CombatList.Size = UDim2.new
 local function RefreshCombat()
     for _, v in pairs(CombatList:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do if p ~= Player then
-        local b = Instance.new("TextButton", CombatList); b.Size = UDim2.new(1,0,0,25); b.Text = "Target: "..p.Name; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(200,200,200); Instance.new("UICorner", b)
+        local b = Instance.new("TextButton", CombatList); b.Size = UDim2.new(1,0,0,25); b.Text = "Track: "..p.Name; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(200,200,200); Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function() SelectedPlayer = p end)
     end end
 end
 task.spawn(function() while task.wait(5) do RefreshCombat() end end)
 
--- TELEPORT: Travel
-local SpawnBtn = Instance.new("TextButton", TeleportTab); SpawnBtn.Size = UDim2.new(1,0,0,35); SpawnBtn.Text = "TP to Spawn"; SpawnBtn.BackgroundColor3 = Color3.fromRGB(50,50,50); SpawnBtn.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", SpawnBtn)
-SpawnBtn.MouseButton1Click:Connect(function() Character:MoveTo(Vector3.new(0, 50, 0)) end)
+-- Teleport: Server Hop & TP
+local Hop = Instance.new("TextButton", TeleportTab); Hop.Size = UDim2.new(1,0,0,35); Hop.Text = "Server Hop"; Hop.BackgroundColor3 = Color3.fromRGB(60,60,60); Hop.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", Hop)
+Hop.MouseButton1Click:Connect(function()
+    local x = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100"))
+    for _, s in pairs(x.data) do if s.playing < s.max and s.id ~= game.JobId then TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id) break end end
+end)
 
 local TPList = Instance.new("Frame", TeleportTab); TPList.Size = UDim2.new(1,0,0,100); TPList.BackgroundTransparency = 1; Instance.new("UIListLayout", TPList)
 local function RefreshTP()
     for _, v in pairs(TPList:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do if p ~= Player then
-        local b = Instance.new("TextButton", TPList); b.Size = UDim2.new(1,0,0,30); b.Text = "TP to "..p.Name; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", b)
+        local b = Instance.new("TextButton", TeleportTab); b.Size = UDim2.new(1,0,0,30); b.Text = "TP to "..p.Name; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", b)
         b.MouseButton1Click:Connect(function() if p.Character then Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,3,0) end end)
     end end
 end
 task.spawn(function() while task.wait(5) do RefreshTP() end end)
 
--- Close/Open Logic
-local function ToggleUI()
-    local isVisible = Main.Visible
-    Main.Visible = not isVisible
-    OpenBtn.Visible = isVisible
-end
-
-CloseBtn.MouseButton1Click:Connect(ToggleUI)
-OpenBtn.MouseButton1Click:Connect(ToggleUI)
-
-UIS.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.V then
-        ToggleUI()
-    end
-end)
-
--- Main Loop
+-- 7. Loops & Global Toggles
 RunService.Stepped:Connect(function()
     if NoclipEnabled and Character then for _, v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
     if Humanoid and not FlyEnabled then Humanoid.WalkSpeed = WalkSpeedValue end
@@ -284,3 +319,10 @@ RunService.Stepped:Connect(function()
 end)
 
 UIS.JumpRequest:Connect(function() if InfJump then Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end end)
+
+-- Keybind to open (PC)
+UIS.InputBegan:Connect(function(input, processed)
+    if not processed and input.KeyCode == Enum.KeyCode.V then
+        ToggleUI()
+    end
+end)
