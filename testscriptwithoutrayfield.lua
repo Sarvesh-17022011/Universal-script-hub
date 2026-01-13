@@ -1,6 +1,6 @@
---[[ 
-    GEMINI UNIVERSAL HUB V3
-    Features: Advanced Fly, ESP, Kill Aura, Object Scanner, Multi-Tab UI
+--[[
+    GEMINI UNIVERSAL HUB V3 (UPDATED)
+    Features: Advanced Directional Fly, ESP, Kill Aura, Object Scanner, Multi-Tab UI
     No External Libraries Required
 ]]
 
@@ -26,6 +26,7 @@ local AuraRange = 20
 local InfiniteJump = false
 local EspEnabled = false
 local ScanKeywords = {"Chest", "Safe", "Box", "Crate", "Money", "Gold", "Item", "Tool"}
+local KeysDown = {W = false, S = false, A = false, D = false, E = false, Q = false}
 
 -- PREVENT DUPLICATES
 if CoreGui:FindFirstChild("GeminiHub") then CoreGui.GeminiHub:Destroy() end
@@ -108,7 +109,6 @@ local function CreateTab(name)
     btn.Font = Enum.Font.Gotham
     btn.Parent = Sidebar
     Instance.new("UICorner", btn)
-
     local page = Instance.new("ScrollingFrame")
     page.Size = UDim2.new(1, 0, 1, 0)
     page.Visible = false
@@ -171,6 +171,44 @@ local function AddSlider(txt, min, max, parent, callback)
     bar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then update(input) end end)
 end
 
+-- FLY INPUT TRACKING
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    local key = input.KeyCode.Name
+    if KeysDown[key] ~= nil then KeysDown[key] = true end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    local key = input.KeyCode.Name
+    if KeysDown[key] ~= nil then KeysDown[key] = false end
+end)
+
+local function GetFlyDirection()
+    local dir = Vector3.new(0,0,0)
+    if KeysDown.W then dir = dir + Camera.CFrame.LookVector end
+    if KeysDown.S then dir = dir - Camera.CFrame.LookVector end
+    if KeysDown.D then dir = dir + Camera.CFrame.RightVector end
+    if KeysDown.A then dir = dir - Camera.CFrame.RightVector end
+    if KeysDown.E then dir = dir + Vector3.new(0,1,0) end
+    if KeysDown.Q then dir = dir - Vector3.new(0,1,0) end
+    return dir
+end
+
+-- MAIN LOOP (FLY, NOCLIP)
+RunService.RenderStepped:Connect(function()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local root = LocalPlayer.Character.HumanoidRootPart
+        if Flying then
+            root.Velocity = GetFlyDirection() * FlySpeed
+        end
+        if Noclipping then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do 
+                if v:IsA("BasePart") then v.CanCollide = false end 
+            end
+        end
+    end
+end)
+
 -- TABS INITIALIZATION
 local HomeTab = CreateTab("Home")
 local MainTab = CreateTab("Main")
@@ -224,52 +262,49 @@ AddButton("Scan Workspace Objects", MainTab, function()
 end)
 
 --- [PLAYER TAB] ---
-AddButton("Toggle Fly", PlayerTab, function()
+AddButton("Toggle Directional Fly", PlayerTab, function()
     Flying = not Flying
-    if Flying then
-        local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        local bv = Instance.new("BodyVelocity", root)
-        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-        task.spawn(function()
-            while Flying do
-                bv.Velocity = Camera.CFrame.LookVector * FlySpeed
-                task.wait()
-            end
-            bv:Destroy()
-        end)
+    local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        if not Flying then root.Velocity = Vector3.new(0,0,0) end
     end
 end)
+
 AddSlider("Fly Speed", 10, 300, PlayerTab, function(v) FlySpeed = v end)
 AddSlider("WalkSpeed", 16, 300, PlayerTab, function(v) LocalPlayer.Character.Humanoid.WalkSpeed = v end)
+
 AddButton("Toggle Noclip", PlayerTab, function()
     Noclipping = not Noclipping
-    RunService.Stepped:Connect(function()
-        if Noclipping then
-            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-        end
-    end)
 end)
+
 AddButton("Infinite Jump", PlayerTab, function()
     InfiniteJump = not InfiniteJump
-    UserInputService.JumpRequest:Connect(function() if InfiniteJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end end)
+    UserInputService.JumpRequest:Connect(function() 
+        if InfiniteJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end 
+    end)
 end)
 
 --- [COMBAT TAB] ---
-AddButton("Kill Aura", CombatTab, function()
+AddButton("Advanced Kill Aura", CombatTab, function()
     KillAura = not KillAura
-    while KillAura do
-        task.wait(0.2)
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                if (p.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < AuraRange then
-                    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                    if tool then tool:Activate() end
+    task.spawn(function()
+        while KillAura do
+            task.wait(0.1)
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    local hum = p.Character:FindFirstChild("Humanoid")
+                    if hum and hum.Health > 0 and (p.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < AuraRange then
+                        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                        if tool then tool:Activate() end
+                    end
                 end
             end
         end
-    end
+    end)
 end)
+
 AddSlider("Aura Range", 5, 50, CombatTab, function(v) AuraRange = v end)
+
 AddButton("Toggle ESP", CombatTab, function()
     EspEnabled = not EspEnabled
     for _, p in pairs(Players:GetPlayers()) do
@@ -277,6 +312,8 @@ AddButton("Toggle ESP", CombatTab, function()
             if EspEnabled then
                 local h = Instance.new("Highlight", p.Character)
                 h.Name = "GeminiESP"
+                h.FillTransparency = 0.5
+                h.OutlineColor = Color3.new(1, 0, 0)
             elseif p.Character:FindFirstChild("GeminiESP") then
                 p.Character.GeminiESP:Destroy()
             end
@@ -286,7 +323,8 @@ end)
 
 --- [TELEPORT TAB] ---
 AddButton("TP to Spawn", TeleportTab, function()
-    LocalPlayer.Character.HumanoidRootPart.CFrame = workspace:FindFirstChildOfClass("SpawnLocation").CFrame + Vector3.new(0,5,0)
+    local spawn = workspace:FindFirstChildOfClass("SpawnLocation")
+    if spawn then LocalPlayer.Character.HumanoidRootPart.CFrame = spawn.CFrame + Vector3.new(0,5,0) end
 end)
 
 --- [THEMES TAB] ---
