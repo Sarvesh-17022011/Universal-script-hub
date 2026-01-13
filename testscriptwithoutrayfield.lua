@@ -1,326 +1,321 @@
--- [[ UNIVERSAL HUB - EXECUTOR VERSION ]]
+--[[ 
+    GEMINI UNIVERSAL HUB V3
+    Features: Advanced Fly, ESP, Kill Aura, Object Scanner, Multi-Tab UI
+    No External Libraries Required
+]]
+
+-- SERVICES
 local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
+local MarketplaceService = game:GetService("MarketplaceService")
 
-local ParentUI = gethui and gethui() or CoreGui
+-- VARIABLES
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
 
--- 1. Cleanup
-if ParentUI:FindFirstChild("SarveshHub_Ultimate") then 
-    ParentUI:FindFirstChild("SarveshHub_Ultimate"):Destroy() 
-end
+-- TOGGLES & SETTINGS
+local Flying = false
+local FlySpeed = 50
+local Noclipping = false
+local KillAura = false
+local AuraRange = 20
+local InfiniteJump = false
+local EspEnabled = false
+local ScanKeywords = {"Chest", "Safe", "Box", "Crate", "Money", "Gold", "Item", "Tool"}
 
--- 2. State & Variables
-local Character = Player.Character or Player.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local FlyEnabled, FlySpeed, WalkSpeedValue = false, 50, 16
-local NoclipEnabled, InfJump = false, false
-local KillAura, KillAuraRange = false, 20
-local ESPEnabled, SelectedPlayer = false, nil
-local GodMode, Vanished = false, false
-local UITheme = Color3.fromRGB(0, 255, 150)
+-- PREVENT DUPLICATES
+if CoreGui:FindFirstChild("GeminiHub") then CoreGui.GeminiHub:Destroy() end
 
-Player.CharacterAdded:Connect(function(Char)
-    Character = Char
-    Humanoid = Char:WaitForChild("Humanoid")
-end)
+-- UI ROOT
+local MainGui = Instance.new("ScreenGui")
+MainGui.Name = "GeminiHub"
+MainGui.Parent = CoreGui
+MainGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- 3. UI Root
-local ScreenGui = Instance.new("ScreenGui", ParentUI)
-ScreenGui.Name = "SarveshHub_Ultimate"
-ScreenGui.ResetOnSpawn = false
+-- MAIN FRAME
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 550, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -275, 0.5, -200)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = MainGui
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
 
--- 4. Custom Dragging Function (Works on Mobile + PC)
-local function MakeDraggable(TopBar, Frame)
+-- TOP BAR (DRAGGABLE)
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 45)
+TopBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TopBar.BorderSizePixel = 0
+TopBar.Parent = MainFrame
+Instance.new("UICorner", TopBar)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -120, 1, 0)
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.Text = "GEMINI UNIVERSAL HUB"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = TopBar
+
+-- SIDEBAR
+local Sidebar = Instance.new("Frame")
+Sidebar.Size = UDim2.new(0, 120, 1, -45)
+Sidebar.Position = UDim2.new(0, 0, 0, 45)
+Sidebar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Sidebar.BorderSizePixel = 0
+Sidebar.Parent = MainFrame
+Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0, 5)
+
+-- PAGE CONTAINER
+local PageContainer = Instance.new("Frame")
+PageContainer.Size = UDim2.new(1, -135, 1, -60)
+PageContainer.Position = UDim2.new(0, 130, 0, 55)
+PageContainer.BackgroundTransparency = 1
+PageContainer.Parent = MainFrame
+
+-- UTILITY FUNCTIONS
+local function MakeDraggable(obj, target)
     local dragging, dragInput, dragStart, startPos
-    TopBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = Frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true; dragStart = input.Position; startPos = target.Position
         end
     end)
-    TopBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-            dragInput = input
-        end
-    end)
-    UIS.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+            target.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
+    UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 end
 
--- 5. Main Menu Frame
-local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 500, 0, 400)
-Main.Position = UDim2.new(0.5, -250, 0.5, -200)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.BorderSizePixel = 0
-Main.Active = true
-Instance.new("UICorner", Main)
-MakeDraggable(Main, Main)
-
--- 6. Floating Minimize Button (The "Shrunk" Button)
-local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Name = "OpenButton"
-OpenBtn.Size = UDim2.new(0, 60, 0, 60)
-OpenBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
-OpenBtn.Visible = false
-OpenBtn.Text = "HUB"
-OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-OpenBtn.TextColor3 = UITheme
-OpenBtn.Font = Enum.Font.GothamBold
-OpenBtn.TextSize = 14
-Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
-local OpenStroke = Instance.new("UIStroke", OpenBtn)
-OpenStroke.Color = UITheme
-OpenStroke.Thickness = 2
-MakeDraggable(OpenBtn, OpenBtn)
-
--- 7. Minimize Logic
-local function MinimizeUI()
-    Main.Visible = false
-    OpenBtn.Visible = true
-end
-
-local function MaximizeUI()
-    Main.Visible = true
-    OpenBtn.Visible = false
-end
-
-OpenBtn.MouseButton1Click:Connect(MaximizeUI)
-
--- Minimize Button inside Main
-local CloseBtn = Instance.new("TextButton", Main)
-CloseBtn.Size = UDim2.new(0, 30, 0, 30)
-CloseBtn.Position = UDim2.new(1, -35, 0, 5)
-CloseBtn.Text = "-"
-CloseBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Font = Enum.Font.GothamBold
-Instance.new("UICorner", CloseBtn)
-CloseBtn.MouseButton1Click:Connect(MinimizeUI)
-
--- 8. Tabs System
-local Sidebar = Instance.new("Frame", Main)
-Sidebar.Size = UDim2.new(0, 120, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Instance.new("UICorner", Sidebar)
-
-local Container = Instance.new("Frame", Main)
-Container.Position = UDim2.new(0, 130, 0, 10)
-Container.Size = UDim2.new(1, -140, 1, -20)
-Container.BackgroundTransparency = 1
-
-local function CreateTab(name, pos)
-    local Page = Instance.new("ScrollingFrame", Container)
-    Page.Size = UDim2.new(1, 0, 1, 0)
-    Page.BackgroundTransparency = 1
-    Page.Visible = (pos == 1)
-    Page.ScrollBarThickness = 2
-    local Layout = Instance.new("UIListLayout", Page)
-    Layout.Padding = UDim.new(0, 8)
-
-    local TabBtn = Instance.new("TextButton", Sidebar)
-    TabBtn.Size = UDim2.new(1, -10, 0, 35)
-    TabBtn.Position = UDim2.new(0, 5, 0, (pos-1)*40 + 10)
-    TabBtn.Text = name
-    TabBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    TabBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", TabBtn)
-    
-    TabBtn.MouseButton1Click:Connect(function()
-        for _, v in pairs(Container:GetChildren()) do if v:IsA("ScrollingFrame") then v.Visible = false end end
-        Page.Visible = true
-    end)
-    return Page
-end
-
--- Helper Components
-local function AddToggle(parent, text, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = UDim2.new(1, 0, 0, 35)
-    btn.Text = text .. ": OFF"
+local Pages = {}
+local function CreateTab(name)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.Text = name
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = Sidebar
     Instance.new("UICorner", btn)
-    local state = false
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.Visible = false
+    page.BackgroundTransparency = 1
+    page.ScrollBarThickness = 2
+    page.CanvasSize = UDim2.new(0, 0, 2, 0)
+    page.Parent = PageContainer
+    Instance.new("UIListLayout", page).Padding = UDim.new(0, 8)
+    
+    Pages[name] = page
     btn.MouseButton1Click:Connect(function()
-        state = not state
-        btn.Text = text .. (state and ": ON" or ": OFF")
-        btn.BackgroundColor3 = state and UITheme or Color3.fromRGB(40, 40, 40)
-        callback(state)
+        for _, v in pairs(Pages) do v.Visible = false end
+        page.Visible = true
     end)
+    return page
 end
 
-local function AddSlider(parent, text, min, max, default, callback)
-    local SFrame = Instance.new("Frame", parent)
-    SFrame.Size = UDim2.new(1, 0, 0, 50); SFrame.BackgroundTransparency = 1
-    local Label = Instance.new("TextLabel", SFrame)
-    Label.Size = UDim2.new(1, 0, 0, 20); Label.Text = text .. ": " .. default; Label.TextColor3 = Color3.fromRGB(255, 255, 255); Label.BackgroundTransparency = 1
-    local Bar = Instance.new("Frame", SFrame)
-    Bar.Size = UDim2.new(1, -20, 0, 8); Bar.Position = UDim2.new(0, 10, 0, 30); Bar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    local Fill = Instance.new("Frame", Bar)
-    Fill.Size = UDim2.new((default-min)/(max-min), 0, 1, 0); Fill.BackgroundColor3 = UITheme
+local function AddButton(txt, parent, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 35)
+    btn.Text = txt
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = parent
+    Instance.new("UICorner", btn)
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function AddSlider(txt, min, max, parent, callback)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -10, 0, 45)
+    container.BackgroundTransparency = 1
+    container.Parent = parent
     
-    local function Update(input)
-        local pos = math.clamp((input.Position.X - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
-        local val = math.floor(min + (max - min) * pos)
-        Fill.Size = UDim2.new(pos, 0, 1, 0)
-        Label.Text = text .. ": " .. val
+    local label = Instance.new("TextLabel", container)
+    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Text = txt .. " (" .. min .. ")"
+    label.TextColor3 = Color3.new(1,1,1)
+    label.BackgroundTransparency = 1
+    
+    local bar = Instance.new("TextButton", container)
+    bar.Size = UDim2.new(1, 0, 0, 15)
+    bar.Position = UDim2.new(0, 0, 0, 25)
+    bar.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
+    bar.Text = ""
+    
+    local fill = Instance.new("Frame", bar)
+    fill.Size = UDim2.new(0.5, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+    
+    local function update(input)
+        local ratio = math.clamp((input.Position.X - bar.AbsolutePosition.X) / bar.AbsoluteSize.X, 0, 1)
+        fill.Size = UDim2.new(ratio, 0, 1, 0)
+        local val = math.floor(min + (max - min) * ratio)
+        label.Text = txt .. " (" .. val .. ")"
         callback(val)
     end
-    
-    local dragging = false
-    Bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; Update(i) end end)
-    UIS.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
-    UIS.InputChanged:Connect(function(i) if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then Update(i) end end)
+    bar.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then update(input) end end)
 end
 
--- 9. Setup Features
-local HomeTab = CreateTab("Home", 1)
-local MainTab = CreateTab("Main", 2)
-local PlayerTab = CreateTab("Player", 3)
-local CombatTab = CreateTab("Combat", 4)
-local TeleportTab = CreateTab("Teleport", 5)
+-- TABS INITIALIZATION
+local HomeTab = CreateTab("Home")
+local MainTab = CreateTab("Main")
+local PlayerTab = CreateTab("Player")
+local CombatTab = CreateTab("Combat")
+local TeleportTab = CreateTab("Teleports")
+local ThemeTab = CreateTab("Themes")
 
--- Home: Stats
-local StatBox = Instance.new("TextLabel", HomeTab)
-StatBox.Size = UDim2.new(1, 0, 0, 100); StatBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30); StatBox.TextColor3 = Color3.fromRGB(255,255,255); StatBox.Text = "Select player to see stats"; Instance.new("UICorner", StatBox)
+--- [HOME TAB] ---
+local gameName = MarketplaceService:GetProductInfo(game.PlaceId).Name
+local infoText = Instance.new("TextLabel", HomeTab)
+infoText.Size = UDim2.new(1, 0, 0, 80)
+infoText.Text = "Game: "..gameName.."\nID: "..game.PlaceId.."\nUser: "..LocalPlayer.Name
+infoText.TextColor3 = Color3.new(1,1,1)
+infoText.BackgroundTransparency = 1
+infoText.TextWrapped = true
 
-local function RefreshHome()
-    for _, v in pairs(HomeTab:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+local pList = Instance.new("ScrollingFrame", HomeTab)
+pList.Size = UDim2.new(1, 0, 0, 200)
+pList.BackgroundColor3 = Color3.new(0,0,0)
+pList.BackgroundTransparency = 0.5
+Instance.new("UIListLayout", pList)
+
+local function UpdatePlayers()
+    for _, v in pairs(pList:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
-        local b = Instance.new("TextButton", HomeTab); b.Size = UDim2.new(1,0,0,30); b.Text = p.DisplayName; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(function()
-            local str = "Name: "..p.Name.."\n"
-            local ls = p:FindFirstChild("leaderstats")
-            if ls then for _, v in pairs(ls:GetChildren()) do str = str..v.Name..": "..tostring(v.Value).." | " end end
-            StatBox.Text = str
+        AddButton(p.Name, pList, function()
+            infoText.Text = "Target: "..p.Name.."\nAccount Age: "..p.AccountAge.." days\nTeam: "..(p.Team and p.Team.Name or "None")
         end)
     end
 end
-task.spawn(function() while task.wait(5) do RefreshHome() end end)
+AddButton("Refresh Players", HomeTab, UpdatePlayers)
 
--- Main: God/Bright
-AddToggle(MainTab, "God Mode", function(v)
-    GodMode = v
-    task.spawn(function()
-        while GodMode do
-            if Character and not Character:FindFirstChildOfClass("ForceField") then Instance.new("ForceField", Character) end
-            task.wait(0.5)
+--- [MAIN TAB] - OBJECT SCANNER ---
+local objList = Instance.new("ScrollingFrame", MainTab)
+objList.Size = UDim2.new(1, 0, 0, 300)
+objList.BackgroundTransparency = 0.5
+Instance.new("UIListLayout", objList)
+
+AddButton("Scan Workspace Objects", MainTab, function()
+    for _, v in pairs(objList:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    for _, obj in pairs(workspace:GetDescendants()) do
+        local match = false
+        for _, word in pairs(ScanKeywords) do if string.find(string.lower(obj.Name), string.lower(word)) then match = true break end end
+        if match and (obj:IsA("BasePart") or obj:IsA("Model")) then
+            AddButton("["..obj.ClassName.."] "..obj.Name, objList, function()
+                LocalPlayer.Character:MoveTo(obj:IsA("Model") and obj:GetModelCFrame().p or obj.Position)
+            end)
         end
-        if Character and Character:FindFirstChildOfClass("ForceField") then Character:FindFirstChildOfClass("ForceField"):Destroy() end
-    end)
+    end
 end)
-AddToggle(MainTab, "Fullbright", function(v) Lighting.Brightness = v and 2 or 1; Lighting.GlobalShadows = not v; Lighting.ClockTime = v and 14 or 12 end)
 
--- Player: Fly/Speed/Vanish
-AddToggle(PlayerTab, "Fly", function(v) 
-    FlyEnabled = v 
-    if v then
+--- [PLAYER TAB] ---
+AddButton("Toggle Fly", PlayerTab, function()
+    Flying = not Flying
+    if Flying then
+        local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local bv = Instance.new("BodyVelocity", root)
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
         task.spawn(function()
-            local bv = Instance.new("BodyVelocity", Character:WaitForChild("HumanoidRootPart"))
-            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            while FlyEnabled do
-                local cam = workspace.CurrentCamera.CFrame
-                local move = Humanoid.MoveDirection
-                local vel = (cam.LookVector * (move.Z * -1)) + (cam.RightVector * move.X)
-                bv.Velocity = vel * FlySpeed
-                if move.Magnitude == 0 then bv.Velocity = Vector3.new(0,0,0) end
+            while Flying do
+                bv.Velocity = Camera.CFrame.LookVector * FlySpeed
                 task.wait()
             end
             bv:Destroy()
         end)
     end
 end)
-AddSlider(PlayerTab, "Fly Speed", 1, 300, 50, function(v) FlySpeed = v end)
-AddSlider(PlayerTab, "Walk Speed", 16, 250, 16, function(v) WalkSpeedValue = v end)
-AddToggle(PlayerTab, "Noclip", function(v) NoclipEnabled = v end)
-AddToggle(PlayerTab, "Inf Jump", function(v) InfJump = v end)
-AddToggle(PlayerTab, "Vanish", function(v)
-    Vanished = v
-    for _, p in pairs(Character:GetDescendants()) do if p:IsA("BasePart") or p:IsA("Decal") then p.Transparency = v and 1 or 0 end end
+AddSlider("Fly Speed", 10, 300, PlayerTab, function(v) FlySpeed = v end)
+AddSlider("WalkSpeed", 16, 300, PlayerTab, function(v) LocalPlayer.Character.Humanoid.WalkSpeed = v end)
+AddButton("Toggle Noclip", PlayerTab, function()
+    Noclipping = not Noclipping
+    RunService.Stepped:Connect(function()
+        if Noclipping then
+            for _, v in pairs(LocalPlayer.Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
+        end
+    end)
+end)
+AddButton("Infinite Jump", PlayerTab, function()
+    InfiniteJump = not InfiniteJump
+    UserInputService.JumpRequest:Connect(function() if InfiniteJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end end)
 end)
 
--- Combat: Aura/ESP
-AddToggle(CombatTab, "Kill Aura", function(v) KillAura = v end)
-AddSlider(CombatTab, "Range", 5, 50, 20, function(v) KillAuraRange = v end)
-AddToggle(CombatTab, "Target ESP", function(v) ESPEnabled = v end)
-
-local CombatList = Instance.new("Frame", CombatTab); CombatList.Size = UDim2.new(1,0,0,100); CombatList.BackgroundTransparency = 1; Instance.new("UIListLayout", CombatList)
-local function RefreshCombat()
-    for _, v in pairs(CombatList:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
-    for _, p in pairs(Players:GetPlayers()) do if p ~= Player then
-        local b = Instance.new("TextButton", CombatList); b.Size = UDim2.new(1,0,0,25); b.Text = "Track: "..p.Name; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(200,200,200); Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(function() SelectedPlayer = p end)
-    end end
-end
-task.spawn(function() while task.wait(5) do RefreshCombat() end end)
-
--- Teleport: Hop/TP
-local Hop = Instance.new("TextButton", TeleportTab); Hop.Size = UDim2.new(1,0,0,35); Hop.Text = "Server Hop"; Hop.BackgroundColor3 = Color3.fromRGB(60,60,60); Hop.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", Hop)
-Hop.MouseButton1Click:Connect(function()
-    local x = game:GetService("HttpService"):JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Desc&limit=100"))
-    for _, s in pairs(x.data) do if s.playing < s.max and s.id ~= game.JobId then TeleportService:TeleportToPlaceInstance(game.PlaceId, s.id) break end end
-end)
-
-local TPList = Instance.new("Frame", TeleportTab); TPList.Size = UDim2.new(1,0,0,100); TPList.BackgroundTransparency = 1; Instance.new("UIListLayout", TPList)
-local function RefreshTP()
-    for _, v in pairs(TPList:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
-    for _, p in pairs(Players:GetPlayers()) do if p ~= Player then
-        local b = Instance.new("TextButton", TeleportTab); b.Size = UDim2.new(1,0,0,30); b.Text = "TP to "..p.Name; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.fromRGB(255,255,255); Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(function() if p.Character then Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,3,0) end end)
-    end end
-end
-task.spawn(function() while task.wait(5) do RefreshTP() end end)
-
--- 10. Core Loops
-RunService.Stepped:Connect(function()
-    if NoclipEnabled and Character then for _, v in pairs(Character:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end end
-    if Humanoid and not FlyEnabled then Humanoid.WalkSpeed = WalkSpeedValue end
-    
-    if KillAura then
+--- [COMBAT TAB] ---
+AddButton("Kill Aura", CombatTab, function()
+    KillAura = not KillAura
+    while KillAura do
+        task.wait(0.2)
         for _, p in pairs(Players:GetPlayers()) do
-            if p ~= Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                if (Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude <= KillAuraRange then
-                    local tool = Character:FindFirstChildOfClass("Tool")
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                if (p.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < AuraRange then
+                    local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
                     if tool then tool:Activate() end
                 end
             end
         end
     end
-    
-    if ESPEnabled and SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("Head") then
-        local head = SelectedPlayer.Character.Head
-        if not head:FindFirstChild("ESPTag") then
-            local b = Instance.new("BillboardGui", head); b.Name = "ESPTag"; b.Size = UDim2.new(0,100,0,50); b.AlwaysOnTop = true; b.ExtentsOffset = Vector3.new(0,3,0)
-            local l = Instance.new("TextLabel", b); l.Size = UDim2.new(1,0,1,0); l.BackgroundTransparency = 1; l.TextColor3 = Color3.fromRGB(255,255,255); l.Font = Enum.Font.GothamBold; l.TextStrokeTransparency = 0
-        end
-        local dist = math.floor((Character.HumanoidRootPart.Position - head.Position).Magnitude)
-        head.ESPTag.TextLabel.Text = SelectedPlayer.DisplayName .. "\n[" .. dist .. "m]"
-    end
 end)
-
-UIS.JumpRequest:Connect(function() if InfJump then Humanoid:ChangeState(Enum.HumanoidStateType.Jumping) end end)
-
--- Keybind Toggle
-UIS.InputBegan:Connect(function(input, processed)
-    if not processed and input.KeyCode == Enum.KeyCode.V then
-        if Main.Visible or OpenBtn.Visible then
-            if Main.Visible then MinimizeUI() else MaximizeUI() end
+AddSlider("Aura Range", 5, 50, CombatTab, function(v) AuraRange = v end)
+AddButton("Toggle ESP", CombatTab, function()
+    EspEnabled = not EspEnabled
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            if EspEnabled then
+                local h = Instance.new("Highlight", p.Character)
+                h.Name = "GeminiESP"
+            elseif p.Character:FindFirstChild("GeminiESP") then
+                p.Character.GeminiESP:Destroy()
+            end
         end
     end
 end)
+
+--- [TELEPORT TAB] ---
+AddButton("TP to Spawn", TeleportTab, function()
+    LocalPlayer.Character.HumanoidRootPart.CFrame = workspace:FindFirstChildOfClass("SpawnLocation").CFrame + Vector3.new(0,5,0)
+end)
+
+--- [THEMES TAB] ---
+local function SetTheme(color)
+    TweenService:Create(MainFrame, TweenInfo.new(0.5), {BackgroundColor3 = color}):Play()
+end
+AddButton("Dark Gray", ThemeTab, function() SetTheme(Color3.fromRGB(30,30,30)) end)
+AddButton("Midnight", ThemeTab, function() SetTheme(Color3.fromRGB(15,15,25)) end)
+AddButton("Ocean", ThemeTab, function() SetTheme(Color3.fromRGB(10,40,60)) end)
+
+-- UI CONTROLS
+local CloseBtn = AddButton("X", TopBar, function() MainGui:Destroy() end)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 7)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+
+local MinBtn = AddButton("-", TopBar, function()
+    MainFrame.Visible = false
+    local Restore = Instance.new("TextButton", MainGui)
+    Restore.Size = UDim2.new(0, 120, 0, 40)
+    Restore.Position = UDim2.new(0, 20, 1, -60)
+    Restore.Text = "RESTORE HUB"
+    Restore.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    Restore.TextColor3 = Color3.new(1,1,1)
+    Instance.new("UICorner", Restore)
+    Restore.MouseButton1Click:Connect(function() MainFrame.Visible = true; Restore:Destroy() end)
+end)
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(1, -70, 0, 7)
+
+MakeDraggable(TopBar, MainFrame)
+Pages["Home"].Visible = true
