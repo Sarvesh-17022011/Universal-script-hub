@@ -1,151 +1,203 @@
---[[
-    GEMINI UNIVERSAL HUB V3 (UPDATED)
-    Features: All-Button Toggles, Invisible Mode, Multi-Tab UI
-]]
-
--- SERVICES
+-- [[ ADVANCED UNIVERSAL HUB - NO LIBRARIES ]]
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local CoreGui = game:GetService("CoreGui")
-local MarketplaceService = game:GetService("MarketplaceService")
-
--- VARIABLES
 local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
--- TOGGLES & SETTINGS
-local Flying = false
-local FlySpeed = 50
-local Noclipping = false
-local KillAura = false
-local AuraRange = 20
-local InfiniteJump = false
-local EspEnabled = false
-local InvisibleActive = false
-local KeysDown = {W = false, S = false, A = false, D = false, E = false, Q = false}
+-- Clean up
+if CoreGui:FindFirstChild("UltraHub") then CoreGui.UltraHub:Destroy() end
 
--- PREVENT DUPLICATES
-if CoreGui:FindFirstChild("GeminiHub") then CoreGui.GeminiHub:Destroy() end
+-- [[ ROOT GUI ]]
+local Screen = Instance.new("ScreenGui", CoreGui)
+Screen.Name = "UltraHub"
+Screen.ResetOnSpawn = false
 
--- UI ROOT
-local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "GeminiHub"
-MainGui.Parent = CoreGui
+-- [[ MINIMIZE BUTTON (MOBILE FRIENDLY) ]]
+local ToggleBtn = Instance.new("TextButton", Screen)
+ToggleBtn.Name = "ToggleBtn"
+ToggleBtn.Size = UDim2.new(0, 50, 0, 50)
+ToggleBtn.Position = UDim2.new(0, 10, 0.5, -25)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ToggleBtn.Text = "HUB"
+ToggleBtn.TextColor3 = Color3.new(1, 1, 1)
+ToggleBtn.Visible = false
+Instance.new("UICorner", ToggleBtn)
 
--- MAIN FRAME
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 550, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -275, 0.5, -200)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Parent = MainGui
-Instance.new("UICorner", MainFrame)
+-- [[ MAIN FRAME ]]
+local Main = Instance.new("Frame", Screen)
+Main.Size = UDim2.new(0, 500, 0, 350)
+Main.Position = UDim2.new(0.5, -250, 0.5, -175)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true -- Standard dragging for desktop/mobile
 
--- TOP BAR (DRAGGABLE)
-local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 45)
-TopBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-TopBar.Parent = MainFrame
-Instance.new("UICorner", TopBar)
+local MainCorner = Instance.new("UICorner", Main)
 
--- SIDEBAR & PAGE CONTAINER
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 120, 1, -45)
-Sidebar.Position = UDim2.new(0, 0, 0, 45)
-Sidebar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Sidebar.Parent = MainFrame
-Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0, 5)
+-- [[ TOP BAR ]]
+local TopBar = Instance.new("Frame", Main)
+TopBar.Size = UDim2.new(1, 0, 0, 35)
+TopBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+TopBar.BorderSizePixel = 0
 
-local PageContainer = Instance.new("Frame")
-PageContainer.Size = UDim2.new(1, -135, 1, -60)
-PageContainer.Position = UDim2.new(0, 130, 0, 55)
-PageContainer.BackgroundTransparency = 1
-PageContainer.Parent = MainFrame
+local Title = Instance.new("TextLabel", TopBar)
+Title.Text = "  ULTRA SCRIPT HUB"
+Title.Size = UDim2.new(0.6, 0, 1, 0)
+Title.BackgroundTransparency = 1
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- HELPER: TOGGLE BUTTON CREATOR
-local function AddToggleButton(txt, parent, callback, isInvisibleBtn)
-    local btn = Instance.new("TextButton")
-    local active = false
-    btn.Size = UDim2.new(1, -10, 0, 35)
-    btn.Text = txt
-    btn.Font = Enum.Font.Gotham
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Parent = parent
-    Instance.new("UICorner", btn)
+local Close = Instance.new("TextButton", TopBar)
+Close.Text = "X"
+Close.Position = UDim2.new(1, -35, 0, 0)
+Close.Size = UDim2.new(0, 35, 1, 0)
+Close.BackgroundTransparency = 1
+Close.TextColor3 = Color3.new(1, 0, 0)
+Close.MouseButton1Click:Connect(function() Screen:Destroy() end)
 
-    -- Style logic
-    if isInvisibleBtn then
-        btn.BackgroundTransparency = 1
-    else
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    end
+local Min = Instance.new("TextButton", TopBar)
+Min.Text = "-"
+Min.Position = UDim2.new(1, -70, 0, 0)
+Min.Size = UDim2.new(0, 35, 1, 0)
+Min.BackgroundTransparency = 1
+Min.TextColor3 = Color3.new(1, 1, 1)
 
-    btn.MouseButton1Click:Connect(function()
-        active = not active
-        if active then
-            btn.TextColor3 = Color3.fromRGB(0, 255, 0) -- Turn text green
-            if not isInvisibleBtn then btn.BackgroundColor3 = Color3.fromRGB(40, 80, 40) end
-        else
-            btn.TextColor3 = Color3.new(1, 1, 1) -- Back to white
-            if not isInvisibleBtn then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
-        end
-        callback(active)
-    end)
-    return btn
-end
+Min.MouseButton1Click:Connect(function()
+    Main.Visible = false
+    ToggleBtn.Visible = true
+end)
 
--- TAB CREATOR
-local Pages = {}
-local function CreateTab(name)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 35)
+ToggleBtn.MouseButton1Click:Connect(function()
+    Main.Visible = true
+    ToggleBtn.Visible = false
+end)
+
+-- [[ CONTENT SETUP ]]
+local Nav = Instance.new("Frame", Main)
+Nav.Size = UDim2.new(0, 100, 1, -35)
+Nav.Position = UDim2.new(0, 0, 0, 35)
+Nav.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+
+local Container = Instance.new("Frame", Main)
+Container.Size = UDim2.new(1, -110, 1, -45)
+Container.Position = UDim2.new(0, 105, 0, 40)
+Container.BackgroundTransparency = 1
+
+local NavLayout = Instance.new("UIListLayout", Nav)
+
+-- [[ TABS SYSTEM ]]
+function CreateTab(name)
+    local btn = Instance.new("TextButton", Nav)
+    btn.Size = UDim2.new(1, 0, 0, 40)
     btn.Text = name
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    btn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-    btn.Parent = Sidebar
-    Instance.new("UICorner", btn)
-
-    local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, 0, 1, 0)
-    page.Visible = false
-    page.BackgroundTransparency = 1
-    page.CanvasSize = UDim2.new(0, 0, 2, 0)
-    page.Parent = PageContainer
-    Instance.new("UIListLayout", page).Padding = UDim.new(0, 8)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.TextColor3 = Color3.new(1,1,1)
     
-    Pages[name] = page
+    local page = Instance.new("ScrollingFrame", Container)
+    page.Size = UDim2.new(1, 0, 1, 0)
+    page.BackgroundTransparency = 1
+    page.Visible = false
+    page.CanvasSize = UDim2.new(0,0,5,0)
+    Instance.new("UIListLayout", page).Padding = UDim.new(0,5)
+
     btn.MouseButton1Click:Connect(function()
-        for _, v in pairs(Pages) do v.Visible = false end
+        for _, p in pairs(Container:GetChildren()) do p.Visible = false end
         page.Visible = true
     end)
     return page
 end
 
--- TABS
+local Home = CreateTab("Home")
+local MainTab = CreateTab("Main")
 local PlayerTab = CreateTab("Player")
-local CombatTab = CreateTab("Combat")
+local Teleport = CreateTab("Teleport")
+local Combat = CreateTab("Combat")
+local Themes = CreateTab("Themes")
 
--- PLAYER FEATURES
-AddToggleButton("Invisible Mode", PlayerTab, function(state)
-    InvisibleActive = state
-    local char = LocalPlayer.Character
-    if char then
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") or v:IsA("Decal") then
-                v.Transparency = state and 1 or 0
+-- [[ HOME TAB: AUTO-REFRESH PLAYER LIST ]]
+local InfoLabel = Instance.new("TextLabel", Home)
+InfoLabel.Size = UDim2.new(1,0,0,50)
+InfoLabel.Text = "Game ID: "..game.PlaceId.."\nName: "..game.Name
+InfoLabel.TextColor3 = Color3.new(1,1,1)
+InfoLabel.BackgroundTransparency = 1
+
+local PlayerList = Instance.new("Frame", Home)
+PlayerList.Size = UDim2.new(1,0,0,200)
+PlayerList.BackgroundTransparency = 1
+local ListLayout = Instance.new("UIListLayout", PlayerList)
+
+function UpdatePlayerList()
+    for _, child in pairs(PlayerList:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+    for _, p in pairs(Players:GetPlayers()) do
+        local pBtn = Instance.new("TextButton", PlayerList)
+        pBtn.Size = UDim2.new(1,0,0,30)
+        pBtn.Text = p.Name
+        pBtn.MouseButton1Click:Connect(function()
+            local stats = p:FindFirstChild("leaderstats")
+            local info = "Stats: "
+            if stats then
+                for _, s in pairs(stats:GetChildren()) do info = info..s.Name..": "..tostring(s.Value).." " end
+            else
+                info = "No Leaderstats Found"
             end
+            InfoLabel.Text = "Viewing: "..p.Name.."\n"..info
+        end)
+    end
+end
+task.spawn(function() while task.wait(5) do UpdatePlayerList() end end)
+UpdatePlayerList()
+
+-- [[ MAIN TAB: OBJECT SCANNER ]]
+local function AddObjectLabel(parent, text)
+    local l = Instance.new("TextLabel", parent)
+    l.Size = UDim2.new(1,0,0,25)
+    l.Text = text
+    l.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    l.BackgroundTransparency = 1
+end
+
+local function ScanObjects()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+            AddObjectLabel(MainTab, obj.ClassName..": "..obj.Parent.Name)
         end
     end
-end, true) -- Set to true for the invisible background style
+end
+ScanObjects()
 
-AddToggleButton("Fly", PlayerTab, function(state) Flying = state end)
-AddToggleButton("Noclip", PlayerTab, function(state) Noclipping = state end)
+-- [[ THEMES TAB ]]
+local function AddColorBtn(color, name)
+    local b = Instance.new("TextButton", Themes)
+    b.Size = UDim2.new(1,0,0,35)
+    b.BackgroundColor3 = color
+    b.Text = name
+    b.MouseButton1Click:Connect(function() Main.BackgroundColor3 = color end)
+end
+AddColorBtn(Color3.fromRGB(40, 0, 0), "Dark Red")
+AddColorBtn(Color3.fromRGB(0, 40, 40), "Teal")
+AddColorBtn(Color3.fromRGB(20, 20, 20), "Default")
 
--- COMBAT FEATURES
-AddToggleButton("Kill Aura", CombatTab, function(state) KillAura = state end)
-AddToggleButton("ESP", CombatTab, function(state) EspEnabled = state end)
+-- [[ COMBAT & PLAYER EXAMPLES ]]
+local function CreateButton(parent, text, callback)
+    local b = Instance.new("TextButton", parent)
+    b.Size = UDim2.new(1,0,0,40)
+    b.Text = text
+    b.MouseButton1Click:Connect(callback)
+end
 
--- Restore visibility on first tab
-Pages["Player"].Visible = true
+CreateButton(PlayerTab, "Infinite Jump", function()
+    UserInputService.JumpRequest:Connect(function()
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end)
+end)
+
+CreateButton(Teleport, "TP to Random Player", function()
+    local all = Players:GetPlayers()
+    local random = all[math.random(1, #all)]
+    if random ~= LocalPlayer then LocalPlayer.Character:MoveTo(random.Character.HumanoidRootPart.Position) end
+end)
+
+-- Finish
+Home.Visible = true
