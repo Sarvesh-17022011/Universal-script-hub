@@ -25,6 +25,7 @@ local KillAura = false
 local AuraRange = 20
 local InfiniteJump = false
 local EspEnabled = false
+local InvisibleActive = false -- New variable for your toggle
 local ScanKeywords = {"Chest", "Safe", "Box", "Crate", "Money", "Gold", "Item", "Tool"}
 local KeysDown = {W = false, S = false, A = false, D = false, E = false, Q = false}
 
@@ -262,6 +263,29 @@ AddButton("Scan Workspace Objects", MainTab, function()
 end)
 
 --- [PLAYER TAB] ---
+
+-- NEW INVISIBLE TOGGLE FEATURE
+local InvisibleToggle = Instance.new("TextButton")
+InvisibleToggle.Name = "InvisibleToggle"
+InvisibleToggle.Parent = PlayerTab
+InvisibleToggle.Size = UDim2.new(1, -10, 0, 35)
+InvisibleToggle.BackgroundTransparency = 1 -- Invisible background
+InvisibleToggle.BorderSizePixel = 0
+InvisibleToggle.Text = "Invisible Toggle (Click Me)"
+InvisibleToggle.Font = Enum.Font.Gotham
+InvisibleToggle.TextSize = 14
+InvisibleToggle.TextColor3 = Color3.fromRGB(200, 200, 200) -- Default color
+
+InvisibleToggle.MouseButton1Click:Connect(function()
+    InvisibleActive = not InvisibleActive
+    if InvisibleActive then
+        InvisibleToggle.TextColor3 = Color3.fromRGB(0, 255, 0) -- Turns Green
+        -- Add any custom 'Invisible' logic here if needed
+    else
+        InvisibleToggle.TextColor3 = Color3.fromRGB(200, 200, 200) -- Back to standard
+    end
+end)
+
 AddButton("Toggle Directional Fly", PlayerTab, function()
     Flying = not Flying
     local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
